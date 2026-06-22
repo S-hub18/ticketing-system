@@ -1,9 +1,7 @@
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaClient } from '../src/generated/prisma/client'
 import bcrypt from 'bcryptjs'
 
-const adapter = new PrismaBetterSqlite3({ url: 'file:./dev.db' })
-const prisma = new PrismaClient({ adapter } as any)
+const prisma = new PrismaClient()
 const hash = (p: string) => bcrypt.hash(p, 12)
 
 const HOUR = 3600000
