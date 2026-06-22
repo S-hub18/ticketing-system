@@ -10,7 +10,7 @@ try {
     const lines = fs.readFileSync(envLocal, 'utf8').split('\n');
     lines.forEach((line: string) => {
       const match = line.match(/^([^#=][^=]*)=(.*)$/);
-      if (match && !process.env[match[1]]) {
+      if (match) {
         process.env[match[1]] = match[2].replace(/^"|"$/g, '');
       }
     });

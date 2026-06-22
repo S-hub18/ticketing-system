@@ -1,3 +1,11 @@
+import { config } from 'dotenv'
+import { existsSync } from 'fs'
+import { resolve } from 'path'
+// .env.local overrides .env (Next.js convention)
+const envLocal = resolve(process.cwd(), '.env.local')
+if (existsSync(envLocal)) config({ path: envLocal, override: true })
+config()
+
 import { Pool } from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../src/generated/prisma/client'
