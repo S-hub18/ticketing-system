@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+
+}
+
+enum Role {
+  EMPLOYEE
+  AGENT
+  ADMIN
+}
+
+enum Department {
+  IT
+  HR
+  FINANCE
+  ADMIN
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  TICKET_CREATED
+  TICKET_ASSIGNED
+  TICKET_STATUS_CHANGED
+  TICKET_COMMENT_ADDED
+  TICKET_ESCALATED
+  TICKET_REASSIGNED
+  TICKET_REOPENED
+}
+
+enum AgentSuggestedAction {
+  RESOLVE
+  NEEDS_INFO
+  ESCALATE
+  SCHEDULE_CALL
+}
+
+enum AgentType {
+  INTAKE
+  TRIAGE
+  ASSIST
+  ESCALATION
+  INSIGHTS
+}
+
+model User {
+  id           String  @id @default(cuid())
+  name         String
+  email        String  @unique
+  passwordHash String
+  role         Role    @default(EMPLOYEE)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agentDepartments AgentDepartment[]
+  createdTickets   Ticket[]          @relation("CreatedBy")
+  assignedTickets  Ticket[]          @relation("AssignedTo")
+  comments         TicketComment[]
+  notifications    Notification[]
+  ticketHistory    TicketHistory[]
+  agentRuns        AgentRun[]
+  attachments      Attachment[]
+}
+
+model AgentDepartment {
+  id         String     @id @default(cuid())
+  agentId    String
+  department Department
+
+  agent User @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, department])
+}
+
+model Ticket {
+  id          String        @id @default(cuid())
+  title       String
+  description String
+  status      TicketStatus  @default(OPEN)
+  urgency     TicketUrgency @default(MEDIUM)
+  department  Department
+
+  aiCategory          String?
+  aiCategoryConf      Float?
+  aiUrgencySuggestion TicketUrgency?
+  selfServiceAnswer   String?
+  duplicateShown      Boolean @default(false)
+
+  isEscalated    Boolean   @default(false)
+  escalatedAt    DateTime?
+  lastActivityAt DateTime  @default(now())
+
+  createdById  String
+  assignedToId String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+  closedAt   DateTime?
+
+  createdBy     User            @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedTo    User?           @relation("AssignedTo", fields: [assignedToId], references: [id])
+  comments      TicketComment[]
+  history       TicketHistory[]
+  agentRuns     AgentRun[]
+  attachments   Attachment[]
+  notifications Notification[]
+}
+
+model TicketComment {
+  id       String @id @default(cuid())
+  ticketId String
+  authorId String
+  body     String
+
+  isInternal           Boolean              @default(false)
+  isAiDraft            Boolean              @default(false)
+  agentSuggestedAction AgentSuggestedAction?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  ticketId  String?
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+}
+
+model TicketHistory {
+  id          String   @id @default(cuid())
+  ticketId    String
+  changedById String
+  field       String
+  oldValue    String?
+  newValue    String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  changedBy User   @relation(fields: [changedById], references: [id])
+}
+
+model AgentRun {
+  id          String    @id @default(cuid())
+  ticketId    String?
+  userId      String?
+  agentType   AgentType
+  stepIndex   Int       @default(0)
+  toolName    String?
+  toolInput   String?
+  toolOutput  String?
+  finalOutput String?
+  totalSteps  Int?
+  latencyMs   Int?
+  modelId     String?
+  createdAt   DateTime  @default(now())
+
+  ticket Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  ticketId     String
+  uploadedById String
+  filename     String
+  mimeType     String
+  sizeBytes    Int
+  storagePath  String
+  createdAt    DateTime @default(now())
+
+  ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedBy User   @relation(fields: [uploadedById], references: [id])
+}
